@@ -14,7 +14,6 @@ const HttpError = require("./models/http-error");
 const app = express();
 
 app.use(bodyParser.json());
-app.use(express.static(path.join("front", "public")));
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -33,10 +32,6 @@ app.use("/api/shops", shopsRoutes);
 app.use("/api/calendars", calendarsRoutes);
 app.use("/api/services", servicesRoutes);
 app.use("/api/categories", categoriesRoutes);
-
-app.user((req, res, next) => {
-  res.sendFile(path.resolve(__dirname, "front/public", "index.html"));
-});
 
 app.use((req, res, next) => {
   const error = new HttpError("Could not find this route.", 404);
