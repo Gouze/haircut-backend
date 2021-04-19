@@ -15,6 +15,9 @@ const userSchema = new Schema(
     managedShops: [
       { type: mongoose.Types.ObjectId, required: true, ref: "Shop" },
     ],
+    appointments: [
+      { type: mongoose.Types.ObjectId, required: true, ref: "Appointment" },
+    ],
     isAdmin: { type: Boolean, required: true, default: false },
     isEmailValid: { type: Boolean, required: true, default: false },
     emailValidationToken: { type: String, required: true },

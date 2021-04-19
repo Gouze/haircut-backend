@@ -8,6 +8,8 @@ const { DateTime, Interval, Duration } = require("luxon");
 
 const HttpError = require("../models/http-error");
 const Timeslot = require("../models/timeslot");
+const User = require("../models/user");
+const Appointment = require("../models/appointment");
 const Shop = require("../models/shop");
 const Service = require("../models/service");
 
@@ -156,8 +158,9 @@ const getTimeslotsByMonth = async (req, res, next) => {
 
 const bookTimeslots = async (req, res, next) => {
   const slots = req.body.slots;
+  const customerId = req.body.customerId;
+  const serviceId = req.body.serviceId;
   let timeslots;
-
   try {
     timeslots = await Timeslot.find({ _id: { $in: slots } });
   } catch (err) {
@@ -171,19 +174,49 @@ const bookTimeslots = async (req, res, next) => {
     const error = new HttpError("Could not find user for provided id", 404);
     return next(error);
   }
+  console.log(timeslots);
 
-  timeslots.map(async (timeslot) => {
-    timeslot.booked = true;
-    try {
-      await timeslot.save();
-    } catch (err) {
-      const error = new HttpError(
-        "Something went wrong, could not book slots",
-        500
-      );
-      return next(error);
-    }
+  let user;
+  try {
+    user = await User.findById(customerId);
+  } catch (err) {
+    const error = new HttpError("Creating place failed, please try again", 500);
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError("Could not find user for provided id", 404);
+    return next(error);
+  }
+
+  const ti = timeslots.length - 1;
+
+  const appointment = new Appointment({
+    startAt: timeslots[0].startAt,
+    endAt: timeslots[ti].endAt,
+    customer: user._id,
+    slots: timeslots,
+    service: serviceId,
   });
+
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await appointment.save({ session: sess });
+    user.appointments.push(appointment);
+
+    timeslots.map((ts) => {
+      ts.update({ appointment: appointment }, { session: sess });
+    });
+
+    await sess.commitTransaction();
+  } catch (err) {
+    const error = new HttpError(
+      "Somehting went wrong, could not create appointment",
+      500
+    );
+    return next(error);
+  }
 
   res.status(200).json({ slots: timeslots });
 };
@@ -192,6 +225,7 @@ const test = async (req, res, next) => {
   let slot;
   const serviceId = req.params.serviceId;
   const date = req.params.date;
+  const shopId = req.params.shopId;
 
   console.log(serviceId);
 
@@ -208,6 +242,7 @@ const test = async (req, res, next) => {
   try {
     slots = await Timeslot.find({
       date: new Date(date),
+      shop: shopId,
     }).sort({ startAt: "asc" });
   } catch (err) {
     const error = new HttpError(
@@ -283,9 +318,10 @@ const test = async (req, res, next) => {
 
 const getAllTimeslotsByShop = async (req, res, next) => {
   let slots;
+  const shopId = req.params.shopId;
   try {
     slots = await Timeslot.find({
-      shop: "60762ba477ffd164645f8b45",
+      shop: shopId,
       startAt: {
         $gte: new Date(),
         $lte: new Date().getTime() + 1000 * 60 * 60 * 24 * 365,

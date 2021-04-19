@@ -8,6 +8,7 @@ const timeslotsRoutes = require("./routes/timeslots-routes");
 const shopsRoutes = require("./routes/shops-routes");
 const calendarsRoutes = require("./routes/calendars-routes");
 const categoriesRoutes = require("./routes/categories-routes");
+const appointmentsRoutes = require("./routes/appointments-routes");
 const servicesRoutes = require("./routes/services-routes");
 const HttpError = require("./models/http-error");
 
@@ -32,6 +33,7 @@ app.use("/api/shops", shopsRoutes);
 app.use("/api/calendars", calendarsRoutes);
 app.use("/api/services", servicesRoutes);
 app.use("/api/categories", categoriesRoutes);
+app.use("/api/appointments", appointmentsRoutes);
 
 app.use((req, res, next) => {
   const error = new HttpError("Could not find this route.", 404);
