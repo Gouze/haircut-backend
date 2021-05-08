@@ -4,6 +4,13 @@ const mongoose = require("mongoose");
 const path = require("path");
 const notesRoutes = require("./routes/notes-routes");
 const usersRoutes = require("./routes/users-routes");
+const adminUsersRoutes = require("./routes/admin/users-routes");
+const adminAppointmentsRoutes = require("./routes/admin/appointments-routes");
+const adminTimeslotsRoutes = require("./routes/admin/timeslots-routes");
+const adminCategoriesRoutes = require("./routes/admin/categories-routes");
+const adminServicesRoutes = require("./routes/admin/services-routes");
+const adminNotesRoutes = require("./routes/admin/notes-routes");
+const adminShopsRoutes = require("./routes/admin/shops-routes");
 const timeslotsRoutes = require("./routes/timeslots-routes");
 const shopsRoutes = require("./routes/shops-routes");
 const calendarsRoutes = require("./routes/calendars-routes");
@@ -25,7 +32,13 @@ app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE");
   next();
 });
-
+app.use("/api/admin/users", adminUsersRoutes);
+app.use("/api/admin/appointments", adminAppointmentsRoutes);
+app.use("/api/admin/notes", adminNotesRoutes);
+app.use("/api/admin/timeslots", adminTimeslotsRoutes);
+app.use("/api/admin/categories", adminCategoriesRoutes);
+app.use("/api/admin/services", adminServicesRoutes);
+app.use("/api/admin/shops", adminShopsRoutes);
 app.use("/api/notes", notesRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/timeslots", timeslotsRoutes);

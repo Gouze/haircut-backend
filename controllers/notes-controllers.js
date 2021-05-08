@@ -30,7 +30,7 @@ const getNoteById = async (req, res, next) => {
     );
     return next(error);
   }
-  res.json({ note: note.toObject({ getters: true }) });
+  res.json({ note: note });
 };
 
 //
@@ -59,6 +59,7 @@ const getNotesByUserId = async (req, res, next) => {
 
   res.json({
     notes: userWithNotes.notes.map((note) => note.toObject({ getters: true })),
+    user: `${userWithNotes.firstname} ${userWithNotes.lastname}`,
   });
 };
 

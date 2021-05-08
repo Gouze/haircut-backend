@@ -11,6 +11,8 @@ const categorySchema = new Schema(
       { type: mongoose.Types.ObjectId, required: true, ref: "Service" },
     ],
     shop: { type: mongoose.Types.ObjectId, required: true, ref: "Shop" },
+    isSoftDeleted: { type: Boolean, required: true, default: false },
+    gender: { type: String },
   },
   { timestamps: true }
 );

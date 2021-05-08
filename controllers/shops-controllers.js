@@ -72,5 +72,33 @@ const createShop = async (req, res, next) => {
   res.status(201).json({ shop: createdShop });
 };
 
+const adminGetManagedShops = async (req, res, next) => {
+  let shops = null;
+  try {
+    if (req.adminData.isAdmin) {
+      shops = await Shop.find();
+    } else if (req.adminData.managedShops.length > 0) {
+      shops = await Shop.find({
+        _id: { $in: [req.adminData.managedShops] },
+        isSoftDeleted: false,
+      });
+    }
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching user failed, please try again later",
+      500
+    );
+    return next(error);
+  }
+  if (shops.length == 0) {
+    const error = new HttpError(
+      "Could not find a shop for the provided id.",
+      404
+    );
+    return next(error);
+  }
+  res.json({ shops: shops });
+};
 exports.createShop = createShop;
 exports.getShops = getShops;
+exports.adminGetManagedShops = adminGetManagedShops;

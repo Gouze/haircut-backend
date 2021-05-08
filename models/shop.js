@@ -9,6 +9,9 @@ const shopSchema = new Schema(
     timeslots: [
       { type: mongoose.Types.ObjectId, required: true, ref: "Timeslots" },
     ],
+    appointments: [
+      { type: mongoose.Types.ObjectId, required: true, ref: "Appointment" },
+    ],
     managers: [{ type: mongoose.Types.ObjectId, required: true, ref: "User" }],
     services: [
       { type: mongoose.Types.ObjectId, required: true, ref: "Service" },
@@ -16,6 +19,7 @@ const shopSchema = new Schema(
     categories: [
       { type: mongoose.Types.ObjectId, required: true, ref: "Category" },
     ],
+    isSoftDeleted: { type: Boolean, required: true, default: false },
   },
   { timestamps: true }
 );

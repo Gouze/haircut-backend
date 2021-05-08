@@ -8,6 +8,7 @@ const noteSchema = new Schema(
     subtitle: { type: String, required: true },
     content: { type: String, required: true },
     customer: { type: mongoose.Types.ObjectId, required: true, ref: "User" },
+    isSoftDeleted: { type: Boolean, required: true, default: false },
   },
   { timestamps: true }
 );

@@ -9,6 +9,10 @@ const checkSuperAdmin = require("../middleware/check-superAdmin");
 const router = express.Router();
 router.post("/create", categoriesControllers.createCategory);
 router.get("/shop/:shopId", categoriesControllers.getCategoriesByShop);
+router.get(
+  "/shop/:shopId/gender/:gender",
+  categoriesControllers.getCategoriesByShopAndGender
+);
 
 router.use(checkAuth);
 router.use(checkSuperAdmin);

@@ -15,6 +15,7 @@ const calendarSchema = new Schema(
     ],
     timeslots: [{ type: mongoose.Types.ObjectId, ref: "Timeslot" }],
     shop: { type: mongoose.Types.ObjectId, ref: "Shop" },
+    isSoftDeleted: { type: Boolean, required: true, default: false },
   },
   { timestamps: true }
 );

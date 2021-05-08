@@ -23,6 +23,9 @@ const userSchema = new Schema(
     emailValidationToken: { type: String, required: true },
     notificationBySMS: { type: Boolean, required: true, default: false },
     notificationByEmail: { type: Boolean, required: true, default: false },
+    isSoftDeleted: { type: Boolean, required: true, default: false },
+    isBanned: { type: Boolean, required: true, default: false },
+    lastConnection: { type: Date, required: true },
   },
   { timestamps: true }
 );

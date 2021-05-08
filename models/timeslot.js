@@ -10,6 +10,7 @@ const timeslotSchema = new Schema(
     booked: { type: Boolean, required: true, default: false },
     appointment: { type: mongoose.Types.ObjectId, ref: "Appointment" },
     shop: { type: mongoose.Types.ObjectId, ref: "Shop" },
+    isSoftDeleted: { type: Boolean, required: true, default: false },
   },
   { timestamps: true }
 );

@@ -1,8 +1,8 @@
 const express = require("express");
 const { check } = require("express-validator");
+const checkAdmin = require("../../middleware/check-admin");
 
-const usersControllers = require("../controllers/users-controllers");
-const checkAuth = require("../middleware/check-auth");
+const usersControllers = require("../../controllers/users-controllers");
 
 const router = express.Router();
 
@@ -23,14 +23,19 @@ router.post(
 router.post(
   "/login",
   [check("email").notEmpty(), check("password").notEmpty()],
-  usersControllers.login
+  usersControllers.adminLogin
 );
 router.post(
   "/confirm-email",
   [check("userId").notEmpty(), check("token").notEmpty()],
   usersControllers.confirmEmail
 );
-router.use(checkAuth);
-router.patch("/update", usersControllers.updateMyInfos);
-router.patch("/password", usersControllers.updateMyPassword);
+
+router.use(checkAdmin);
+
+router.post("/disable", usersControllers.adminDisableUser);
+router.patch("/update", usersControllers.adminUpdateUserInfos);
+router.patch("/password", usersControllers.adminUpdateUserPassword);
+router.patch("/role", usersControllers.adminUpdateUserRole);
+
 module.exports = router;

@@ -12,6 +12,7 @@ const User = require("../models/user");
 const Appointment = require("../models/appointment");
 const Shop = require("../models/shop");
 const Service = require("../models/service");
+const { times } = require("lodash");
 
 const getTimeslotsAvailable = async (req, res, next) => {
   let slots;
@@ -39,6 +40,53 @@ const getTimeslotsAvailable = async (req, res, next) => {
   });
 };
 
+const deleteTimeslots = async (req, res, next) => {
+  const { startDate, endDate, shopId } = req.body;
+  let myStartD = moment(startDate)
+    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+    .toISOString();
+  let myEndD = moment(endDate)
+    .set({ hour: 23, minute: 59, second: 59, millisecond: 999 })
+    .toISOString();
+  let shop;
+  try {
+    shop = await Shop.findById(shopId);
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not find a shop",
+      500
+    );
+    return next(error);
+  }
+
+  if (!shop) {
+    const error = new HttpError(
+      "Could not find a shop for the provided id.",
+      404
+    );
+    return next(error);
+  }
+
+  let timeslotsToDelete;
+
+  try {
+    await Timeslot.find({
+      shop: shopId,
+      startAt: { $gte: myStartD, $lte: myEndD },
+    })
+      .remove()
+      .exec();
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not find a sloop",
+      500
+    );
+    return next(error);
+  }
+
+  res.json({ message: "Deleted success" });
+};
+
 const createTimeslots = async (req, res, next) => {
   const { schedule, startDate, endDate, excludedDays, shopId } = req.body;
   let shop;
@@ -59,6 +107,7 @@ const createTimeslots = async (req, res, next) => {
     );
     return next(error);
   }
+
   const createdTimeSlots = [];
   let firstDay = DateTime.fromISO(startDate);
   let lastDay = DateTime.fromISO(endDate);
@@ -83,14 +132,14 @@ const createTimeslots = async (req, res, next) => {
               day: parseInt(d.start.toFormat("d")),
               month: parseInt(d.start.toFormat("L")),
               year: parseInt(d.start.toFormat("y")),
-              hour: parseInt(openingHours[0].split(":")[0]) + 2,
+              hour: parseInt(openingHours[0].split(":")[0]),
               minute: parseInt(openingHours[0].split(":")[1]),
             });
             const endDt = DateTime.fromObject({
               day: parseInt(d.start.toFormat("d")),
               month: parseInt(d.start.toFormat("L")),
               year: parseInt(d.start.toFormat("y")),
-              hour: parseInt(openingHours[1].split(":")[0]) + 2,
+              hour: parseInt(openingHours[1].split(":")[0]),
               minute: parseInt(openingHours[1].split(":")[1]),
             });
 
@@ -121,7 +170,6 @@ const createTimeslots = async (req, res, next) => {
         }
       }
     });
-  console.log(allSlots);
 
   Timeslot.insertMany(allSlots)
     .then((docs) => {
@@ -160,6 +208,7 @@ const bookTimeslots = async (req, res, next) => {
   const slots = req.body.slots;
   const customerId = req.body.customerId;
   const serviceId = req.body.serviceId;
+  const shopId = req.body.shopId;
   let timeslots;
   try {
     timeslots = await Timeslot.find({ _id: { $in: slots } });
@@ -174,7 +223,6 @@ const bookTimeslots = async (req, res, next) => {
     const error = new HttpError("Could not find user for provided id", 404);
     return next(error);
   }
-  console.log(timeslots);
 
   let user;
   try {
@@ -189,6 +237,22 @@ const bookTimeslots = async (req, res, next) => {
     return next(error);
   }
 
+  let shop;
+  try {
+    shop = await Shop.findById(shopId);
+  } catch (err) {
+    const error = new HttpError(
+      "Creating appointment failed, please try again",
+      500
+    );
+    return next(error);
+  }
+
+  if (!shop) {
+    const error = new HttpError("Could not find shop for provided id", 404);
+    return next(error);
+  }
+
   const ti = timeslots.length - 1;
 
   const appointment = new Appointment({
@@ -197,17 +261,24 @@ const bookTimeslots = async (req, res, next) => {
     customer: user._id,
     slots: timeslots,
     service: serviceId,
+    shop: shop,
   });
+  console.log(appointment._id);
 
   try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
-    await appointment.save({ session: sess });
-    user.appointments.push(appointment);
+    user.appointments.push(appointment._id);
+    await user.save({ session: sess });
+    shop.appointments.push(appointment._id);
+    await shop.save({ session: sess });
 
-    timeslots.map((ts) => {
-      ts.update({ appointment: appointment }, { session: sess });
+    timeslots.map(async (timeslot) => {
+      timeslot.appointment = appointment._id;
+      timeslot.booked = true;
+      await timeslot.save({ session: sess });
     });
+    await appointment.save({ session: sess });
 
     await sess.commitTransaction();
   } catch (err) {
@@ -226,8 +297,6 @@ const test = async (req, res, next) => {
   const serviceId = req.params.serviceId;
   const date = req.params.date;
   const shopId = req.params.shopId;
-
-  console.log(serviceId);
 
   try {
     service = await Service.findById(serviceId);
@@ -251,7 +320,6 @@ const test = async (req, res, next) => {
     );
     return next(error);
   }
-  // console.log(slots);
 
   const slotsQty = service.duration / 15;
 
@@ -312,6 +380,7 @@ const test = async (req, res, next) => {
       );
 
     groupedSlots = groupSlots(slotsQty, slots);
+    console.log(groupedSlots);
     res.json({ timeslots: groupedSlots });
   }
 };
@@ -343,10 +412,170 @@ const getAllTimeslotsByShop = async (req, res, next) => {
   }
   res.json({ timeslots: slots });
 };
+const adminGetAllTimeslotsByShop = async (req, res, next) => {
+  let slots;
+  const shopId = req.params.shopId;
+  console.log(shopId);
+  try {
+    slots = await Timeslot.find({
+      shop: shopId,
+    }).sort({
+      startAt: "asc",
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not find a slot",
+      500
+    );
+    return next(error);
+  }
 
+  if (!slots) {
+    const error = new HttpError("Could not find user for provided id", 404);
+    return next(error);
+  }
+  res.json({ timeslots: slots });
+};
+
+const adminGetTimeslotsByShopAndDate = async (req, res, next) => {
+  let slots;
+  const { shopId, startDate, endDate } = req.body;
+
+  let myStartD = moment(startDate)
+    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+    .toISOString();
+  let myEndD = moment(endDate)
+    .set({ hour: 23, minute: 59, second: 59, millisecond: 999 })
+    .toISOString();
+  try {
+    slots = await Timeslot.find({
+      shop: shopId,
+      startAt: { $gte: myStartD, $lte: myEndD },
+    }).sort({
+      startAt: "asc",
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not find a slot",
+      500
+    );
+    return next(error);
+  }
+
+  if (!slots) {
+    const error = new HttpError("Could not find user for provided id", 404);
+    return next(error);
+  }
+  res.json({ timeslots: slots });
+};
+
+const adminFreeTimeslot = async (req, res, next) => {
+  const { timeslotId } = req.body;
+  try {
+    timeslot = await Timeslot.findById(timeslotId);
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not find a slot",
+      500
+    );
+    return next(error);
+  }
+  if (!timeslot) {
+    const error = new HttpError("Could not find user for provided id", 404);
+    return next(error);
+  }
+
+  timeslot.appointment = null;
+  timeslot.booked = false;
+
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await timeslot.save({ session: sess });
+    await sess.commitTransaction();
+  } catch (err) {
+    const error = new HttpError("Creating note failed, please try again.", 500);
+    return next(error);
+  }
+
+  res.json({ timeslot: timeslot });
+};
+const adminBookOneTimeslot = async (req, res, next) => {
+  const { timeslotId } = req.body;
+  try {
+    timeslot = await Timeslot.findById(timeslotId);
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not find a slot",
+      500
+    );
+    return next(error);
+  }
+  if (!timeslot) {
+    const error = new HttpError("Could not find user for provided id", 404);
+    return next(error);
+  }
+
+  timeslot.booked = true;
+
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await timeslot.save({ session: sess });
+
+    await sess.commitTransaction();
+  } catch (err) {
+    const error = new HttpError("Creating note failed, please try again.", 500);
+    return next(error);
+  }
+
+  res.json({ timeslot: timeslot });
+};
+
+const adminBookTimeslots = async (req, res, next) => {
+  const slots = req.body.timeslots;
+  let timeslots;
+
+  try {
+    timeslots = await Timeslot.find({ _id: { $in: slots } });
+  } catch (err) {
+    const error = new HttpError(
+      "Somehting went wrong, could not find slots",
+      500
+    );
+    return next(error);
+  }
+  if (!timeslots) {
+    const error = new HttpError("Could not find user for provided id", 404);
+    return next(error);
+  }
+
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    timeslots.map(async (timeslot) => {
+      timeslot.booked = true;
+      await timeslot.save({ session: sess });
+    });
+    await sess.commitTransaction();
+  } catch (err) {
+    const error = new HttpError("Creating note failed, please try again.", 500);
+    return next(error);
+  }
+
+  res.json({ timeslots: timeslots });
+};
+
+exports.adminBookTimeslots = adminBookTimeslots;
+
+exports.adminGetTimeslotsByShopAndDate = adminGetTimeslotsByShopAndDate;
+exports.adminGetAllTimeslotsByShop = adminGetAllTimeslotsByShop;
 exports.getAllTimeslotsByShop = getAllTimeslotsByShop;
 exports.test = test;
 exports.bookTimeslots = bookTimeslots;
 exports.getTimeslotsByMonth = getTimeslotsByMonth;
 exports.getTimeslotsAvailable = getTimeslotsAvailable;
 exports.createTimeslots = createTimeslots;
+exports.deleteTimeslots = deleteTimeslots;
+exports.adminFreeTimeslot = adminFreeTimeslot;
+exports.adminBookOneTimeslot = adminBookOneTimeslot;

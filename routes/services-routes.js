@@ -7,6 +7,7 @@ const checkAuth = require("../middleware/check-auth");
 const checkSuperAdmin = require("../middleware/check-superAdmin");
 
 const router = express.Router();
+router.get("/get/:serviceId", servicesControllers.getServiceById);
 
 router.use(checkAuth);
 router.use(checkSuperAdmin);

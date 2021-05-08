@@ -34,6 +34,7 @@ const createService = async (req, res, next) => {
     price,
     shop: shopId,
     category: categoryId,
+    isSoftDeleted: false,
   });
 
   let shopObj;
@@ -89,4 +90,119 @@ const createService = async (req, res, next) => {
   res.status(201).json({ note: createdService });
 };
 
+const adminGetServices = async (req, res, next) => {
+  let services = null;
+
+  try {
+    if (req.adminData.isAdmin) {
+      services = await Service.find({ isSoftDeleted: false })
+        .populate("shop")
+        .populate("category")
+        .sort({ createdAt: "desc" });
+    } else if (req.adminData.managedShops.length > 0) {
+      services = await Service.find({
+        shop: { $in: [req.adminData.managedShops] },
+        isSoftDeleted: false,
+      })
+        .populate("shop")
+        .populate("category")
+        .sort({ createdAt: "desc" });
+    }
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching services failed, please try again later",
+      500
+    );
+    return next(error);
+  }
+  if (services.length == 0) {
+    const error = new HttpError(
+      "Could not find a service for the provided id.",
+      404
+    );
+    return next(error);
+  }
+  res.json({ services: services });
+};
+
+const adminUpdateService = async (req, res, next) => {
+  const {
+    serviceId,
+    name,
+    description,
+    duration,
+    slotsPattern,
+    showPrice,
+    shopId,
+    categoryId,
+    price,
+  } = req.body;
+
+  let existingService;
+
+  try {
+    existingService = await Service.findById(serviceId);
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching services failed, please try again later",
+      500
+    );
+    return next(error);
+  }
+  if (!existingService) {
+    const error = new HttpError(
+      "Could not find a service for the provided id.",
+      404
+    );
+    return next(error);
+  }
+
+  existingService.name = name;
+  existingService.description = description;
+  existingService.duration = duration;
+  existingService.slotsPattern = slotsPattern;
+  existingService.showPrice = showPrice;
+  existingService.shopId = shopId;
+  existingService.categoryId = categoryId;
+  existingService.price = price;
+
+  console.log(existingService);
+  try {
+    await existingService.save();
+  } catch (err) {
+    const error = new HttpError("Update service failed, please try again", 500);
+    return next(error);
+  }
+
+  res.json({ service: existingService });
+};
+
+const getServiceById = async (req, res, next) => {
+  let service;
+  let serviceId = req.params.serviceId;
+  try {
+    service = await Service.findById(serviceId)
+      .populate("shop")
+      .populate("category")
+      .sort({ createdAt: "desc" });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching services failed, please try again later",
+      500
+    );
+    return next(error);
+  }
+  if (!service) {
+    const error = new HttpError(
+      "Could not find a service for the provided id.",
+      404
+    );
+    return next(error);
+  }
+  res.json({ service: service });
+};
+
 exports.createService = createService;
+exports.adminGetServices = adminGetServices;
+exports.adminUpdateService = adminUpdateService;
+exports.getServiceById = getServiceById;

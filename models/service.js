@@ -9,8 +9,12 @@ const serviceSchema = new Schema(
     duration: { type: Number, required: true },
     slotsPattern: [{ type: Boolean, required: true }],
     price: { type: Number },
+    showPrice: { type: Boolean, required: true, default: false },
+    gender: { type: String },
+
     shop: { type: mongoose.Types.ObjectId, ref: "Shop" },
     category: { type: mongoose.Types.ObjectId, ref: "Category" },
+    isSoftDeleted: { type: Boolean, required: true, default: false },
   },
   { timestamps: true }
 );
