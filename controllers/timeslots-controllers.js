@@ -522,7 +522,6 @@ const adminBookOneTimeslot = async (req, res, next) => {
     const sess = await mongoose.startSession();
     sess.startTransaction();
     await timeslot.save({ session: sess });
-
     await sess.commitTransaction();
   } catch (err) {
     const error = new HttpError("Creating note failed, please try again.", 500);
